@@ -1,32 +1,79 @@
 name: 🚀 Release
 
+# Trigger on manual dispatch (so you choose patch/minor/major) or
+# on pushes to main (auto-patch for every push—remove if you prefer manual only)
 on:
+  workflow_dispatch:
+    inputs:
+      type:
+        description: 'Release type: patch, minor or major'
+        required: true
+        default: 'patch'
+      dry_run:
+        description: 'Dry run only?'
+        required: true
+        default: 'true'
+      skip_tests:
+        description: 'Skip tests?'
+        required: true
+        default: 'false'
   push:
     branches:
-      - main      # or your default branch
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   release:
-    name: Publish new version
+    name: Build & Release
     runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          override: true
+          override: true          # ensure `stable` is used :contentReference[oaicite:0]{index=0}
 
-      - name: Run cargo test
+      - name: Run tests
+        if: ${{ github.event.inputs.skip_tests == 'false' }}
         run: cargo test --workspace --all-features
 
-      - name: Release with cargo-release
-        uses: actions-rs/cargo-release@v1
-        with:
-          # version bump type is detected from commits by default
-          # you can also hard‑code 'patch' / 'minor' / 'major'
-          token: ${{ secrets.GITHUB_TOKEN }}
-          allow_dirty: false
-          skip_publish: false
+      - name: Install cargo-release
+        run: |
+          # pin to the latest known good version
+          cargo install cargo-release --version 0.25.18 --locked
+        # this installs the `cargo release` CLI :contentReference[oaicite:1]{index=1}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version & tag
+        id: bump
+        run: |
+          REL_TYPE=${{ github.event.inputs.type }}
+          DRY=${{ github.event.inputs.dry_run }}
+          if [ "$DRY" = "false" ]; then
+            cargo release $REL_TYPE --execute --no-publish --no-verify
+          else
+            cargo release $REL_TYPE --no-publish --no-verify
+          fi
+
+      - name: Publish to crates.io
+        if: ${{ github.event.inputs.dry_run == 'false' }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          # cargo-release already updated Cargo.toml and tagged,
+          # now publish your crate
+          cargo publish --token $CARGO_REGISTRY_TOKEN
