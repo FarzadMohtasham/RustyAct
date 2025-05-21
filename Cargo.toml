@@ -1,0 +1,18 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.87.0"
+description = "Feature-rich react app creator"
+documentation = "https://github.com/farzadmohtasham/rustyact"
+homepage = "https://github.com/farzadmohtasham/rustyact"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/farzadmohtasham/rustyact"
+
+[workspace.metadata.release]
+# optional: customize how versions are bumped:
+# minor_pattern = "^feat"
+# patch_pattern = "^(fix|perf)"
+
+[dependencies]

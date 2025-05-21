@@ -1,0 +1,32 @@
+name: 🚀 Release
+
+on:
+  push:
+    branches:
+      - main      # or your default branch
+
+jobs:
+  release:
+    name: Publish new version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Run cargo test
+        run: cargo test --workspace --all-features
+
+      - name: Release with cargo-release
+        uses: actions-rs/cargo-release@v1
+        with:
+          # version bump type is detected from commits by default
+          # you can also hard‑code 'patch' / 'minor' / 'major'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          allow_dirty: false
+          skip_publish: false
